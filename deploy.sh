@@ -1,10 +1,10 @@
 #!/bin/bash
 
-# Komari Telegram Bot 自动部署脚本
+# Komari Telegram Bot 自动部署脚本 (修正版)
 # 此脚本将自动安装所有必要的依赖并设置项目
 
 set -e
-echo "========== Komari Telegram Bot 自动部署脚本 =========="
+echo "========== Komari Telegram Bot 自动部署脚本 (修正版) =========="
 
 # 检查是否为root用户运行
 if [ "$(id -u)" -ne 0 ]; then
@@ -14,12 +14,12 @@ fi
 
 # 检测系统类型
 if [ -f /etc/debian_version ]; then
-  echo "[1/6] 检测到 Debian/Ubuntu 系统，安装依赖..."
+  echo "[1/7] 检测到 Debian/Ubuntu 系统，安装依赖..."
   apt update
   apt install -y curl build-essential pkg-config libssl-dev libsqlite3-dev git
 else
   if [ -f /etc/redhat-release ]; then
-    echo "[1/6] 检测到 CentOS/RHEL 系统，安装依赖..."
+    echo "[1/7] 检测到 CentOS/RHEL 系统，安装依赖..."
     yum install -y curl gcc gcc-c++ make openssl-devel sqlite-devel pkgconfig git
   else
     echo "不支持的系统类型，请手动安装依赖"
@@ -28,7 +28,7 @@ else
 fi
 
 # 安装Rust
-echo "[2/6] 安装 Rust 环境..."
+echo "[2/7] 安装 Rust 环境..."
 if ! command -v rustc &> /dev/null; then
   curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y
   source "$HOME/.cargo/env"
@@ -37,32 +37,97 @@ else
   echo "Rust 已安装，跳过"
 fi
 
-# 克隆项目（如果在当前目录下没有找到项目文件）
-echo "[3/6] 检查项目文件..."
+# 克隆项目（修正GitHub仓库地址）
+echo "[3/7] 检查项目文件..."
 if [ ! -f "Cargo.toml" ]; then
-  echo "未找到项目文件，正在克隆..."
-  git clone https://github.com/xymn2023/komari-tg-bot.git
-  cd komari-tg-bot
+  # 检查是否存在项目目录
+  if [ -d "komari-tg-bot" ]; then
+    echo "检测到已存在 komari-tg-bot 目录"
+    echo "是否要删除现有目录并重新从 GitHub 拉取最新代码？"
+    echo "y) 是，删除现有目录并重新下载"
+    echo "n) 否，使用现有目录"
+    read -r overwrite_choice
+    
+    case $overwrite_choice in
+      y|Y|yes|YES)
+        echo "正在删除现有目录..."
+        rm -rf komari-tg-bot
+        echo "正在从 GitHub 克隆最新项目..."
+        git clone https://github.com/GenshinMinecraft/komari-tg-bot.git
+        cd komari-tg-bot
+        ;;
+      n|N|no|NO)
+        echo "使用现有项目目录"
+        cd komari-tg-bot
+        ;;
+      *)
+        echo "无效选择，默认使用现有目录"
+        cd komari-tg-bot
+        ;;
+    esac
+  else
+    echo "未找到项目文件，正在克隆..."
+    git clone https://github.com/GenshinMinecraft/komari-tg-bot.git
+    cd komari-tg-bot
+  fi
+else
+  echo "当前目录已包含项目文件，继续部署..."
 fi
 
 # 设置Telegram Token
-echo "[4/6] 设置 Telegram Bot Token..."
-if [ ! -f "src/telegram.token" ]; then
-  echo "请输入您的 Telegram Bot Token（从BotFather获取）："
-  read -r token
-  echo -n "$token" > src/telegram.token
-  echo "Token 已保存"
-else
-  echo "Token 文件已存在，跳过"
-fi
+echo "[4/7] 设置 Telegram Bot Token..."
+echo "请输入您的 Telegram Bot Token（从BotFather获取）："
+read -r token
+echo -n "$token" > src/telegram.token
+echo "Token 已保存"
+
+# 创建配置文件 (新增 - 修复关键问题)
+echo "[5/7] 创建配置文件..."
+echo "请输入 Bot 用户名（不带@，如: your_bot_name）："
+read -r bot_name
+
+echo "请输入 Webhook 回调端口（默认: 3000）："
+read -r callback_port
+callback_port=${callback_port:-3000}
+
+echo "请输入 Webhook 回调 URL（如: http://your-domain.com 或 http://IP地址）："
+read -r callback_url
+
+echo "请选择日志级别："
+echo "1) debug"
+echo "2) info (推荐)"
+echo "3) warn"
+echo "4) error"
+read -r log_choice
+
+case $log_choice in
+  1) log_level="debug" ;;
+  3) log_level="warn" ;;
+  4) log_level="error" ;;
+  *) log_level="info" ;;
+esac
+
+# 生成 config.json 文件
+cat > config.json << EOF
+{
+  "db_file": "bot.db",
+  "telegram_token": "$token",
+  "bot_name": "$bot_name",
+  "callback_http_port": $callback_port,
+  "callback_http_url": "$callback_url",
+  "log_level": "$log_level"
+}
+EOF
+
+echo "配置文件 config.json 已创建"
 
 # 编译项目
-echo "[5/6] 编译项目..."
+echo "[6/7] 编译项目..."
 export RUSTFLAGS="-C target-cpu=native"
 cargo build --release
 
 # 创建服务文件（可选）
-echo "[6/6] 创建系统服务..."
+echo "[7/7] 创建系统服务..."
 echo "是否创建系统服务以便开机自启？(y/n)"
 read -r create_service
 
@@ -155,18 +220,18 @@ else
 fi
 
 # 注册全局命令 mbot
-echo "[7/7] 注册全局命令 'mbot'..."
+echo "[额外] 注册全局命令 'mbot'..."
 CURRENT_DIR=$(pwd)
 MBOT_SCRIPT="/usr/local/bin/mbot"
 
 cat > "$MBOT_SCRIPT" << 'EOF'
 #!/bin/bash
 
-# Komari Telegram Bot 全局管理命令
+# Komari Telegram Bot 全局管理命令 (修正版)
 # 支持更新、管理和切换到项目目录
 
 PROJECT_DIR=""
-REPO_URL="https://github.com/xymn2023/komari-tg-bot"
+REPO_URL="https://github.com/GenshinMinecraft/komari-tg-bot"
 
 # 查找项目目录
 find_project_dir() {
@@ -195,7 +260,7 @@ find_project_dir() {
 }
 
 show_help() {
-    echo "Komari Telegram Bot 管理工具"
+    echo "Komari Telegram Bot 管理工具 (修正版)"
     echo "用法: mbot [选项]"
     echo ""
     echo "选项:"
@@ -240,10 +305,10 @@ update_project() {
         fi
     fi
     
-    # 备份token文件
-    if [ -f "src/telegram.token" ]; then
-        cp "src/telegram.token" "/tmp/telegram.token.backup"
-        echo "已备份 Token 文件"
+    # 备份配置文件
+    if [ -f "config.json" ]; then
+        cp "config.json" "/tmp/config.json.backup"
+        echo "已备份配置文件"
     fi
     
     # 更新代码
@@ -251,11 +316,11 @@ update_project() {
     git fetch origin
     git reset --hard origin/main
     
-    # 恢复token文件
-    if [ -f "/tmp/telegram.token.backup" ]; then
-        cp "/tmp/telegram.token.backup" "src/telegram.token"
-        rm -f "/tmp/telegram.token.backup"
-        echo "已恢复 Token 文件"
+    # 恢复配置文件
+    if [ -f "/tmp/config.json.backup" ]; then
+        cp "/tmp/config.json.backup" "config.json"
+        rm -f "/tmp/config.json.backup"
+        echo "已恢复配置文件"
     fi
     
     # 重新编译
@@ -316,6 +381,8 @@ manage_bot() {
                     ;;
                 6)
                     echo "已退出菜单"
+                    sleep 0.2
+                    clear
                     break
                     ;;
                 *)
@@ -509,7 +576,7 @@ if ! echo "$PATH" | grep -q "/usr/local/bin"; then
     echo 'export PATH="/usr/local/bin:$PATH"' >> /etc/profile
 fi
 
-echo "'mbot' 命令已全局注册"
+echo "'mbot' 命令已全局注册 (修正版)"
 echo "您现在可以在任何地方使用以下命令:"
 echo "  mbot          - 进入管理菜单"
 echo "  mbot update   - 更新到最新版本"
@@ -518,14 +585,15 @@ echo "  mbot logs     - 查看日志"
 echo "  mbot cd       - 显示切换到项目目录的命令"
 echo "  mbot help     - 显示帮助信息"
 
-# 最后提醒用户关于Telegram Token的重要性
+# 最后提醒用户关于配置的重要性
 echo "\n重要提示："
-echo "1. 请确保您已正确设置了Telegram Bot Token"
-echo "2. 如需更改Token，请编辑 src/telegram.token 文件，然后重新编译"
+echo "1. 请确保您已正确设置了 Telegram Bot Token 和配置文件"
+echo "2. 如需更改配置，请编辑 config.json 文件，然后重新启动服务"
 echo "3. Token可以从Telegram的@BotFather获取"
 echo "4. 使用 'mbot update' 可以自动更新项目到最新版本"
+echo "5. Webhook 功能已启用，端口为: $callback_port"
 
-echo "\n感谢使用 Komari Telegram Bot！"
+echo "\n感谢使用 Komari Telegram Bot (修正版)！"
 
 # ========== 管理菜单（systemd 和 非 systemd 两种模式） ==========
 # 如果存在 systemd 单元，则使用 systemctl 管理；否则提供后台进程管理。
