@@ -132,9 +132,7 @@ RAM: `{ram_used:.2}` / `{ram_total:.2} MB` `{ram_usage:.2}%`
 SWAP: `{swap_used:.2}` / `{swap_total:.2} MB` `{swap_usage:.2}%`
 DISK: `{disk_used:.2}` / `{disk_total:.2} GB` `{disk_usage:.2}%`
 
-LOAD1: `{load1:.2}`
-LOAD5: `{load5:.2}`
-LOAD15: `{load15:.2}`
+LOAD: `{load1:.2}` / `{load5:.2}` / `{load15:.2}`
 PROC: `{processes}`
 
 NET: `{total_net_down:.2} GB` / `{total_net_up:.2} GB`
