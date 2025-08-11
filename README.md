@@ -1,26 +1,20 @@
 ﻿# komari-tg-bot
 
-**推荐**
 
-一键命令
+
+**一键命令**
+
 
 
 ```
 bash -c "$(curl -fsSL https://raw.githubusercontent.com/xymn2023/komari-tg-bot/main/deploy.sh)"
-
-
 ```
+
+
 
 **说明**：已同步[原仓库](https://github.com/GenshinMinecraft/komari-tg-bot)并实现所有功能，支持群组使用。
 
 
-
-一键命令：
-
-
-```
-bash -c "$(curl -fsSL https://raw.githubusercontent.com/xymn2023/komari-tg-bot/main/deploy.sh)"
-```
 
 
 
@@ -75,3 +69,4 @@ generate_notification_token - 生成令牌
   0. You just DO WHAT THE FUCK YOU WANT TO.
 
 ```
+
