@@ -237,7 +237,7 @@ pub async fn make_keyboard_for_single(
     keyboard.push(first_row);
     keyboard.push(vec![InlineKeyboardButton::callback(
         "Refresh",
-        now_id.to_string(),
+        format!("{}-{}", telegram_id, now_id),
     )]);
 
     Ok(InlineKeyboardMarkup::new(keyboard))
