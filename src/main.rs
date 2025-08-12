@@ -156,6 +156,10 @@ fn parse(text: &str, bot_name: &str) -> Result<Option<Command>, ErrorString> {
 }
 
 async fn answer(bot: Bot, msg: Message, cmd: Command) -> ResponseResult<()> {
+    if msg.from.map(|user| user.is_channel()).unwrap_or(true) {
+        return Ok(());
+    }
+
     match cmd {
         Command::Start => {
             bot.send_message(
