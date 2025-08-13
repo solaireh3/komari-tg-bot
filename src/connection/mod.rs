@@ -88,7 +88,7 @@ pub async fn first_init_read(msg: Message) -> Result<String, ErrorString> {
     Ok(format!(
         "成功读取 Komari 服务信息！\n\
          站点名称：`{site_name}`\n\
-         站点名称：`{site_description}`\n\
+         站点详情：`{site_description}`\n\
          Komari 版本：`{version}`\n\
          节点数量：`{nodes_count}`\n\
          CPU 核心总数：`{cores_count}`\n\
